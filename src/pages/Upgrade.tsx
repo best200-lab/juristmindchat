@@ -106,7 +106,7 @@ export default function Upgrade() {
 
     const paystack = new PaystackPop();
     paystack.newTransaction({
-      key: paystackPublicKey,
+      key: paystackPublicKey, // 👈 USES LIVE KEY FROM ENV
       email: user.email,
       amount: plan.price_ngn * 100,
       plan: plan.paystack_plan_id,
@@ -120,47 +120,15 @@ export default function Upgrade() {
         ]
       },
       
-      // 👇 FIXED: Added logic to update Database on success
+      // 👇 THIS VERSION ONLY RELOADS THE PAGE
+      // It assumes your Webhook has already updated the database in the background.
       onSuccess: async (transaction: any) => {
-        toast.success(`Payment successful! Upgrading account...`);
-        
-        try {
-          // 1. Calculate Expiration Date
-          const startDate = new Date();
-          const endDate = new Date();
-          // Use plan duration or default to 30 days
-          const duration = plan.duration_days || 30; 
-          endDate.setDate(startDate.getDate() + duration);
-
-          // 2. Update Supabase Database
-          if (supabase) {
-            const { error } = await supabase
-              .from('subscriptions')
-              .upsert({
-                user_id: user.id,
-                plan: plan.plan_key,
-                status: 'active',
-                start_date: startDate.toISOString(),
-                end_date: endDate.toISOString(),
-                payment_ref: transaction.reference,
-                amount: plan.price_ngn
-              }, { onConflict: 'user_id' }); // Ensures we update the existing record if it exists
-
-            if (error) throw error;
-          }
-
-          toast.success("Account upgraded successfully!");
-
-          // 3. Reload to reflect changes
-          setTimeout(() => {
-              window.location.reload();
-          }, 2000);
-
-        } catch (err: any) {
-          console.error("Database Update Failed:", err);
-          toast.error("Payment received, but database update failed. Please contact support.");
-          setProcessingPlanId(null);
-        }
+        toast.success(`Payment Successful! Reference: ${transaction.reference}`);
+        setProcessingPlanId(null);
+        // Reload to refresh subscription status
+        setTimeout(() => {
+            window.location.reload();
+        }, 2500);
       },
       
       onCancel: () => {
