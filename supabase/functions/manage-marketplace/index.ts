@@ -37,10 +37,7 @@ serve(async (req) => {
             ...productData,
             seller_id: user.id,
           })
-          .select(`
-            *,
-            profiles!products_seller_id_fkey(display_name)
-          `)
+          .select('*')
           .single();
 
         if (error) throw error;
@@ -51,16 +48,40 @@ serve(async (req) => {
 
       case 'list-products':
       case 'get-products': {
-        const { data, error } = await supabaseClient
+        // Get products first
+        const { data: products, error } = await supabaseClient
           .from('products')
-          .select(`
-            *,
-            profiles!products_seller_id_fkey(display_name)
-          `)
+          .select('*')
           .order('rating', { ascending: false });
 
         if (error) throw error;
-        return new Response(JSON.stringify(data), { 
+
+        // Get unique seller IDs
+        const sellerIds = [...new Set(products?.map(p => p.seller_id) || [])];
+        
+        // Fetch seller profiles separately
+        let sellerProfiles: Record<string, string> = {};
+        if (sellerIds.length > 0) {
+          const { data: profiles } = await supabaseClient
+            .from('profiles')
+            .select('user_id, display_name')
+            .in('user_id', sellerIds);
+          
+          if (profiles) {
+            sellerProfiles = profiles.reduce((acc, p) => {
+              acc[p.user_id] = p.display_name || 'Unknown Seller';
+              return acc;
+            }, {} as Record<string, string>);
+          }
+        }
+
+        // Combine data
+        const productsWithSellers = products?.map(product => ({
+          ...product,
+          seller_name: sellerProfiles[product.seller_id] || 'Unknown Seller'
+        }));
+
+        return new Response(JSON.stringify(productsWithSellers), { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -108,19 +129,45 @@ serve(async (req) => {
       }
 
       case 'get-cart': {
-        const { data, error } = await supabaseClient
+        // Get cart items with products
+        const { data: cartItems, error } = await supabaseClient
           .from('cart_items')
           .select(`
             *,
-            products(
-              id, title, price, description,
-              profiles!products_seller_id_fkey(display_name)
-            )
+            products(id, title, price, description, seller_id)
           `)
           .eq('user_id', user.id);
 
         if (error) throw error;
-        return new Response(JSON.stringify(data), { 
+
+        // Get seller profiles for products in cart
+        const sellerIds = [...new Set(cartItems?.map(item => item.products?.seller_id).filter(Boolean) || [])];
+        let sellerProfiles: Record<string, string> = {};
+        
+        if (sellerIds.length > 0) {
+          const { data: profiles } = await supabaseClient
+            .from('profiles')
+            .select('user_id, display_name')
+            .in('user_id', sellerIds);
+          
+          if (profiles) {
+            sellerProfiles = profiles.reduce((acc, p) => {
+              acc[p.user_id] = p.display_name || 'Unknown Seller';
+              return acc;
+            }, {} as Record<string, string>);
+          }
+        }
+
+        // Add seller names to cart items
+        const cartWithSellerNames = cartItems?.map(item => ({
+          ...item,
+          products: item.products ? {
+            ...item.products,
+            seller_name: sellerProfiles[item.products.seller_id] || 'Unknown Seller'
+          } : null
+        }));
+
+        return new Response(JSON.stringify(cartWithSellerNames), { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }

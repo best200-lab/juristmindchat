@@ -62,22 +62,39 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				gold: {
+					DEFAULT: 'hsl(var(--gold))',
+					foreground: 'hsl(var(--gold-foreground))',
+					muted: 'hsl(var(--gold-muted))'
+				},
+				'status-pending': {
+					DEFAULT: 'hsl(var(--status-pending))',
+					foreground: 'hsl(var(--status-pending-foreground))'
+				},
+				'status-verified': {
+					DEFAULT: 'hsl(var(--status-verified))',
+					foreground: 'hsl(var(--status-verified-foreground))'
+				},
+				'status-rejected': {
+					DEFAULT: 'hsl(var(--status-rejected))',
+					foreground: 'hsl(var(--status-rejected-foreground))'
 				}
 			},
 			backgroundImage: {
 				'gradient-primary': 'var(--gradient-primary)',
 				'gradient-surface': 'var(--gradient-surface)',
-				'gradient-accent': 'var(--gradient-accent)'
+				'gradient-sidebar': 'var(--gradient-sidebar)'
 			},
 			boxShadow: {
 				'sm': 'var(--shadow-sm)',
 				'md': 'var(--shadow-md)',
 				'lg': 'var(--shadow-lg)',
-				'glow': 'var(--shadow-glow)'
+				'gold': 'var(--shadow-gold)',
+				'gold-lg': 'var(--shadow-gold-lg)'
 			},
-			transitionProperty: {
-				'smooth': 'var(--transition-smooth)',
-				'fast': 'var(--transition-fast)'
+			fontFamily: {
+				sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif']
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -86,20 +103,12 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
 				}
 			},
 			animation: {

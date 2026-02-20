@@ -5,6 +5,7 @@ import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface ChatSession {
   id: string;
@@ -13,13 +14,14 @@ interface ChatSession {
 }
 
 interface ChatHistoryProps {
-  onSelectSession: (sessionId: string) => void;
   onNewChat: () => void;
-  currentSessionId?: string;
   compact?: boolean;
 }
 
-export function ChatHistory({ onSelectSession, onNewChat, currentSessionId, compact = false }: ChatHistoryProps) {
+export function ChatHistory({ onNewChat, compact = false }: ChatHistoryProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentSessionId = location.pathname.startsWith('/chat/') ? location.pathname.split('/chat/')[1] : null;
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
@@ -54,6 +56,10 @@ export function ChatHistory({ onSelectSession, onNewChat, currentSessionId, comp
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    navigate(`/chat/${sessionId}`);
   };
 
   const deleteSession = async (sessionId: string) => {
@@ -115,7 +121,7 @@ export function ChatHistory({ onSelectSession, onNewChat, currentSessionId, comp
                 className={`group flex items-center p-2 rounded text-xs cursor-pointer ${
                   currentSessionId === session.id ? 'bg-accent' : 'hover:bg-accent'
                 }`}
-                onClick={() => onSelectSession(session.id)}
+                onClick={() => handleSelectSession(session.id)}
               >
                 <MessageSquare className="w-3 h-3 mr-2 text-muted-foreground" />
                 <div className="flex-1 min-w-0">
@@ -174,7 +180,7 @@ export function ChatHistory({ onSelectSession, onNewChat, currentSessionId, comp
                 <MessageSquare className="w-4 h-4 mr-2 text-muted-foreground" />
                 <div 
                   className="flex-1 min-w-0"
-                  onClick={() => onSelectSession(session.id)}
+                  onClick={() => handleSelectSession(session.id)}
                 >
                   <p className="text-sm truncate">{session.title}</p>
                   <p className="text-xs text-muted-foreground">

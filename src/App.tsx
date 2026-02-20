@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +17,7 @@ import Diary from "./pages/Diary";
 import Jobs from "./pages/Jobs";
 import Marketplace from "./pages/Marketplace";
 import LawyersDirectory from "./pages/LawyersDirectory";
+import { LawyerProfilePage } from "@/components/lawyers";
 import JudgeNotes from "./pages/JudgeNotes";
 import JTL from "./pages/JTL";
 import History from "./pages/History";
@@ -23,8 +25,6 @@ import Upgrade from "./pages/Upgrade";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/Terms";
 import Profile from "./pages/Profile";
-// 👇 1. IMPORT THE NEW PAGE
-import ContactSales from "./pages/ContactSales";
 
 const queryClient = new QueryClient();
 
@@ -36,29 +36,29 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Unauthenticated / Standalone routes */}
+            {/* Unauthenticated routes */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/terms" element={<Terms />} />
-            {/* 👇 2. ADD THE ROUTE HERE */}
-            <Route path="/contact-sales" element={<ContactSales />} />
             
             {/* All other routes are protected with sidebar */}
             <Route path="/*" element={
               <ProtectedRoute>
                 <SidebarProvider>
-                  <div className="flex h-screen w-full">
+                  <div className="flex h-screen w-full bg-background">
                     <JuristSidebar />
                     <div className="flex-1 flex flex-col overflow-hidden">
                       <TopHeader />
                       <main className="flex-1 overflow-hidden">
                         <Routes>
                           <Route path="/" element={<Index />} />
+                          <Route path="/chat/:sessionId" element={<Index />} />
                           <Route path="/search" element={<Search />} />
                           <Route path="/cases" element={<Cases />} />
                           <Route path="/diary" element={<Diary />} />
                           <Route path="/jobs" element={<Jobs />} />
                           <Route path="/marketplace" element={<Marketplace />} />
                           <Route path="/lawyers" element={<LawyersDirectory />} />
+                          <Route path="/lawyers/:slug" element={<LawyerProfilePage />} />
                           <Route path="/judge-notes" element={<JudgeNotes />} />
                           <Route path="/jtl" element={<JTL />} />
                           <Route path="/history" element={<History />} />

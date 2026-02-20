@@ -36,7 +36,7 @@ const mockHistory = [
 
 export default function History() {
   return (
-    <div className="h-full bg-gradient-surface">
+    <div className="h-full overflow-y-auto bg-gradient-surface">
       <div className="max-w-4xl mx-auto p-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Chat History</h1>

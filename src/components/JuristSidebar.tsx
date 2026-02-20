@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Search, MessageCircle, Scale, History, User, ShoppingBag, Briefcase, FileText, BookOpen, FolderOpen, Crown } from "lucide-react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Search, MessageCircle, Scale, History, User, ShoppingBag, Briefcase, FileText, BookOpen, FolderOpen, Crown, Plus } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ChatHistory } from "@/components/ChatHistory";
-import { UsageDashboard } from "@/components/UsageDashboard";
 
 const navigationItems = [
   { title: "Search", url: "/search", icon: Search },
@@ -26,7 +25,6 @@ const navigationItems = [
   { title: "Diary", url: "/diary", icon: BookOpen },
   { title: "Cases", url: "/cases", icon: FolderOpen },
   { title: "Connect with Lawyers", url: "/lawyers", icon: User },
-  { title: "Upgrade", url: "/upgrade", icon: Crown },
 ];
 
 export function JuristSidebar() {
@@ -35,121 +33,129 @@ export function JuristSidebar() {
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showChatHistory, setShowChatHistory] = useState(false);
 
-  const isActive = (path: string) => currentPath === path;
-  const getNavClasses = (active: boolean) =>
-    active
-      ? "bg-sidebar-accent text-sidebar-primary-foreground font-medium border-l-2 border-sidebar-primary"
-      : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground";
-
-  const handleSelectSession = (sessionId: string) => {
-    setCurrentSessionId(sessionId);
-    navigate(`/?session=${sessionId}`);
+  const isActive = (path: string) => {
+    if (path === "/") return currentPath === "/" || currentPath.startsWith("/chat");
+    return currentPath.startsWith(path);
   };
 
   const handleNewChat = () => {
-    setCurrentSessionId(null);
     navigate('/', { replace: true });
     window.dispatchEvent(new CustomEvent('newChat'));
   };
 
+  const handleNavigation = (url: string) => {
+    navigate(url);
+  };
+
   return (
     <Sidebar className={`${collapsed ? "w-16" : "w-64"} transition-all duration-300`}>
-      <SidebarContent className="bg-sidebar border-r border-sidebar-border flex flex-col h-full">
-        
-        {/* --- TOP SECTION (Scrolls) --- */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Logo Section */}
-          <div className="p-4 border-b border-sidebar-border sticky top-0 bg-sidebar z-10">
-            <div className="flex items-center gap-3">
-              <img 
-                src="https://asmostaidymrcesixebq.supabase.co/storage/v1/object/public/asset/juristlogo.png" 
-                alt="Jurist Mind Logo" 
-                className="w-8 h-8 object-contain" 
-              />
-              
-              {!collapsed && (
-                <div>
-                  <h1 className="text-lg font-bold text-sidebar-foreground">JURIST</h1>
-                  <p className="text-sm text-sidebar-foreground/70">MIND</p>
-                </div>
-              )}
-            </div>
+      <SidebarContent className="sidebar-premium sidebar-border-glow flex flex-col h-full">
+        {/* Logo */}
+        <div className="p-5 border-b border-[rgba(255,255,255,0.06)]">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center">
+  <img 
+    src="https://asmostaidymrcesixebq.supabase.co/storage/v1/object/public/asset/juristlogo.png" 
+    alt="Jurist Mind Logo" 
+    className="w-8 h-8 object-contain" 
+  />
+</div>
+            {!collapsed && (
+              <div>
+                <h1 className="text-base font-semibold text-foreground tracking-tight">JURIST</h1>
+                <p className="text-xs font-light text-muted-foreground tracking-[0.15em]">MIND</p>
+              </div>
+            )}
           </div>
-
-          {/* Navigation */}
-          <SidebarGroup className="px-2 py-4">
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-2">
-                {navigationItems.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 ${getNavClasses(
-                          isActive(item.url)
-                        )}`}
-                      >
-                        <item.icon className="w-5 h-5 flex-shrink-0" />
-                        {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-
-          {/* Chat History Section */}
           {!collapsed && (
-            <SidebarGroup className="px-2">
-              <SidebarGroupLabel className="flex items-center justify-between">
-                <span>Chat History</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowChatHistory(!showChatHistory)}
-                  className="h-6 w-6 p-0"
-                >
-                  <History className="w-4 h-4" />
-                </Button>
-              </SidebarGroupLabel>
-              {showChatHistory && (
-                <SidebarGroupContent>
-                  <ChatHistory 
-                    onSelectSession={handleSelectSession}
-                    onNewChat={handleNewChat}
-                    currentSessionId={currentSessionId}
-                    compact={true}
-                  />
-                </SidebarGroupContent>
-              )}
-            </SidebarGroup>
+            <div className="mt-3 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
           )}
         </div>
 
-        {/* --- BOTTOM SECTION (Fixed/Pinned) --- */}
-        {!collapsed && (
-          <div className="mt-auto border-t border-sidebar-border bg-sidebar">
-            
-            {/* USAGE DASHBOARD - PINNED HERE */}
-            <div className="px-4 pt-4 pb-2">
-              <UsageDashboard />
-            </div>
+        {/* New Chat */}
+        <div className="px-3 py-3">
+          <Button
+            onClick={handleNewChat}
+            className={`w-full justify-start gap-3 rounded-xl border border-primary/40 bg-secondary hover:bg-secondary/80 hover:border-primary hover:shadow-gold text-foreground btn-lift btn-press ${
+              collapsed ? "px-2 justify-center" : "px-4"
+            }`}
+            size={collapsed ? "icon" : "default"}
+            variant="ghost"
+          >
+            <Plus className="w-4 h-4 text-primary flex-shrink-0" />
+            {!collapsed && <span className="text-sm font-medium">New Chat</span>}
+          </Button>
+        </div>
 
-            {/* USER PROFILE */}
-            <div className="p-4 pt-2">
-              <NavLink to="/profile">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent/50"
-                >
-                  <User className="w-5 h-5" />
-                  <span className="text-sm">Profile</span>
-                </Button>
-              </NavLink>
+        {/* Navigation */}
+        <SidebarGroup className="px-2 py-2 flex-1">
+          <SidebarGroupContent>
+            <SidebarMenu className="nav-stagger space-y-0.5">
+              {navigationItems.map((item) => {
+                const active = isActive(item.url);
+                return (
+                  <SidebarMenuItem key={item.title} className="animate-fade-in-up">
+                    <SidebarMenuButton asChild>
+                      <button
+                        onClick={() => handleNavigation(item.url)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-[10px] transition-all duration-200 w-full text-left relative ${
+                          active
+                            ? "bg-[rgba(201,168,76,0.08)] text-foreground shadow-[inset_0_0_20px_rgba(201,168,76,0.05)]"
+                            : "text-muted-foreground hover:bg-[rgba(255,255,255,0.05)] hover:text-accent-foreground"
+                        }`}
+                      >
+                        {active && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary" />
+                        )}
+                        <item.icon className={`w-[18px] h-[18px] flex-shrink-0 ${active ? "text-primary" : ""}`} />
+                        {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
+                      </button>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Divider */}
+        <div className="mx-4 h-px bg-[rgba(255,255,255,0.05)]" />
+
+        {/* Chat History */}
+        {!collapsed && (
+          <SidebarGroup className="px-2 py-2">
+            <SidebarGroupLabel className="flex items-center justify-between text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium px-2">
+              <span>History</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowChatHistory(!showChatHistory)}
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+              >
+                <History className="w-3.5 h-3.5" />
+              </Button>
+            </SidebarGroupLabel>
+            {showChatHistory && (
+              <SidebarGroupContent>
+                <ChatHistory onNewChat={handleNewChat} compact={true} />
+              </SidebarGroupContent>
+            )}
+          </SidebarGroup>
+        )}
+
+        {/* Upgrade */}
+        {!collapsed && (
+          <div className="mt-auto p-3">
+            <div className="glass rounded-xl p-3">
+              <button
+                onClick={() => handleNavigation('/upgrade')}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-primary text-gold-foreground text-sm font-semibold btn-lift btn-press hover:shadow-gold-lg transition-all"
+              >
+                <Crown className="w-4 h-4" />
+                Upgrade
+              </button>
             </div>
           </div>
         )}
