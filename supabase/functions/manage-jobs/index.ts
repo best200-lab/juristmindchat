@@ -54,12 +54,20 @@ serve(async (req) => {
       case 'create-job': {
         if (!user) throw new Error('You must be logged in to post jobs');
         
+        const { title, company, location, job_type, salary_range, description, requirements, benefits, experience_level, deadline } = jobData;
+        const insertData: Record<string, unknown> = {
+          title, company, location, job_type, description,
+          posted_by: user.id,
+        };
+        if (salary_range) insertData.salary_range = salary_range;
+        if (requirements) insertData.requirements = requirements;
+        if (benefits) insertData.benefits = benefits;
+        if (experience_level) insertData.experience_level = experience_level;
+        if (deadline) insertData.deadline = deadline;
+
         const { data, error } = await supabaseClient
           .from('jobs')
-          .insert({
-            ...jobData,
-            posted_by: user.id,
-          })
+          .insert(insertData)
           .select('*')
           .single();
 
