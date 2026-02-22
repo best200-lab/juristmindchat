@@ -1,5 +1,3 @@
-Chatinterface 
-
 import { useState, useEffect, useRef } from "react";
 import { Send, Mic, Paperclip, Copy, Check, RotateCcw, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
