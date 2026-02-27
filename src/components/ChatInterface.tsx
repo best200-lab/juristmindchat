@@ -10,7 +10,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import TextareaAutosize from "react-textarea-autosize";
 
-const JURIST_LOGO = "https://phmywmbqvaforkjohoza.supabase.co/storage/v1/object/public/avatars/Jurist%20Mind%20Ai%20Logo.png";
+const JURIST_LOGO =
+  "https://phmywmbqvaforkjohoza.supabase.co/storage/v1/object/public/avatars/JURISTAI-Photoroom.png";
 
 interface Message {
   id: string;
@@ -28,22 +29,19 @@ const quickPrompts = [
   "Find recent judgements",
 ];
 
-// ── Typing / loading indicator ──────────────────────────────────────────────
+// ── Typing indicator with timed phases ──────────────────────────────────────
 function TypingIndicator() {
   const [phase, setPhase] = useState<"dots" | "deep" | "almost">("dots");
-  const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsed((prev) => {
-        const next = prev + 1;
-        if (next >= 40) setPhase("almost");
-        else if (next >= 20) setPhase("deep");
-        else setPhase("dots");
-        return next;
-      });
+    let elapsed = 0;
+    const ticker = setInterval(() => {
+      elapsed += 1;
+      if (elapsed >= 40) setPhase("almost");
+      else if (elapsed >= 20) setPhase("deep");
+      else setPhase("dots");
     }, 1000);
-    return () => clearInterval(interval);
+    return () => clearInterval(ticker);
   }, []);
 
   if (phase === "deep") {
@@ -84,7 +82,7 @@ export function ChatInterface() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const isNewChatRef = useRef(false); // ← FIX: prevents loadMostRecentSession after new chat
+  const isNewChatRef = useRef(false);
 
   const { sessionId: urlSessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
@@ -118,23 +116,18 @@ export function ChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // ── Session loading on URL change ──────────────────────────────────────────
+  // ── Session loading ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
-
     if (urlSessionId) {
       isNewChatRef.current = false;
       setMessages([]);
       loadSession(urlSessionId);
     } else {
-      // Only load most recent if this wasn't triggered by a "New Chat" click
-      if (!isNewChatRef.current) {
-        loadMostRecentSession();
-      }
+      if (!isNewChatRef.current) loadMostRecentSession();
     }
   }, [user, urlSessionId]);
 
-  // ── New chat event listener ────────────────────────────────────────────────
   useEffect(() => {
     const handleNewChatEvent = () => {
       setMessages([]);
@@ -159,16 +152,10 @@ export function ChatInterface() {
           const newMsg = payload.new as any;
           setMessages((prev) => {
             if (prev.some((msg) => msg.db_id === newMsg.id)) return prev;
-            return [
-              ...prev,
-              {
-                id: newMsg.id,
-                db_id: newMsg.id,
-                content: newMsg.content,
-                sender: newMsg.sender as "user" | "ai",
-                timestamp: new Date(newMsg.created_at),
-              },
-            ];
+            return [...prev, {
+              id: newMsg.id, db_id: newMsg.id, content: newMsg.content,
+              sender: newMsg.sender as "user" | "ai", timestamp: new Date(newMsg.created_at),
+            }];
           });
         }
       )
@@ -181,42 +168,28 @@ export function ChatInterface() {
     if (!user) return;
     try {
       const { data, error } = await supabase
-        .from("chat_sessions")
-        .select("id")
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .from("chat_sessions").select("id").eq("user_id", user.id)
+        .order("updated_at", { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       if (data) navigate(`/chat/${data.id}`, { replace: true });
-    } catch (error) {
-      console.error("Error loading recent session:", error);
-    }
+    } catch (error) { console.error("Error loading recent session:", error); }
   };
 
   const createNewSession = async () => {
     if (!user) return null;
     try {
       const { data, error } = await supabase
-        .from("chat_sessions")
-        .insert({ user_id: user.id, title: "New Chat" })
-        .select()
-        .single();
+        .from("chat_sessions").insert({ user_id: user.id, title: "New Chat" }).select().single();
       if (error) throw error;
       return data.id;
-    } catch (error) {
-      console.error("Error creating session:", error);
-      return null;
-    }
+    } catch (error) { console.error("Error creating session:", error); return null; }
   };
 
   const saveMessage = async (sessionId: string, content: string, sender: "user" | "ai"): Promise<string | null> => {
     try {
       const { data, error } = await supabase
-        .from("chat_messages")
-        .insert({ session_id: sessionId, content, sender })
-        .select("id, created_at")
-        .single();
+        .from("chat_messages").insert({ session_id: sessionId, content, sender })
+        .select("id, created_at").single();
       if (error) throw error;
       await supabase.from("chat_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sessionId);
       return data?.id || null;
@@ -229,16 +202,13 @@ export function ChatInterface() {
 
   const updateSessionTitle = async (sessionId: string, firstMessage: string) => {
     const title = firstMessage.length > 50 ? firstMessage.substring(0, 50) + "..." : firstMessage;
-    try {
-      await supabase.from("chat_sessions").update({ title }).eq("id", sessionId);
-    } catch (error) {
-      console.error("Error updating session title:", error);
-    }
+    try { await supabase.from("chat_sessions").update({ title }).eq("id", sessionId); }
+    catch (error) { console.error("Error updating session title:", error); }
   };
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const handleNewChat = () => {
-    isNewChatRef.current = true; // ← prevent loadMostRecentSession in useEffect
+    isNewChatRef.current = true;
     setMessages([]);
     setCurrentSessionId(null);
     shouldAutoScrollRef.current = true;
@@ -262,9 +232,7 @@ export function ChatInterface() {
     }
     try {
       const { error } = await supabase.from("chat_feedback").insert({
-        message_id: message.db_id,
-        user_id: user.id,
-        is_positive: isPositive,
+        message_id: message.db_id, user_id: user.id, is_positive: isPositive,
       });
       if (error) throw error;
       toast({ title: isPositive ? "Thanks!" : "Feedback Sent", description: "We use this to improve Jurist Mind." });
@@ -325,10 +293,9 @@ export function ChatInterface() {
     if (!isRegeneration) {
       setInputValue("");
       const tempMessageId = Date.now().toString();
-      const newMessage: Message = { id: tempMessageId, content: messageContent, sender: "user", timestamp: new Date() };
       shouldAutoScrollRef.current = true;
       setShowJumpToLatest(false);
-      setMessages((prev) => [...prev, newMessage]);
+      setMessages((prev) => [...prev, { id: tempMessageId, content: messageContent, sender: "user", timestamp: new Date() }]);
 
       const userDbId = await saveMessage(sessionId, messageContent, "user");
       if (userDbId) {
@@ -338,10 +305,8 @@ export function ChatInterface() {
     }
 
     setIsLoading(true);
-
     const aiTempId = (Date.now() + 1).toString();
-    const aiPlaceholder: Message = { id: aiTempId, content: "", sender: "ai", timestamp: new Date() };
-    setMessages((prev) => [...prev, aiPlaceholder]);
+    setMessages((prev) => [...prev, { id: aiTempId, content: "", sender: "ai", timestamp: new Date() }]);
 
     try {
       const formData = new FormData();
@@ -375,9 +340,7 @@ export function ChatInterface() {
                 setMessages((prev) => prev.map((msg) => (msg.id === aiTempId ? { ...msg, content: fullContent } : msg)));
               }
               if (data.type === "done") done = true;
-            } catch (parseError) {
-              console.log("Chunk parse info:", parseError);
-            }
+            } catch (parseError) { console.log("Chunk parse info:", parseError); }
           }
         }
       }
@@ -388,9 +351,7 @@ export function ChatInterface() {
           const data = JSON.parse(text);
           fullContent = data.answer || data.content || "I'm JURIST MIND, your legal AI assistant.";
           setMessages((prev) => prev.map((msg) => (msg.id === aiTempId ? { ...msg, content: fullContent } : msg)));
-        } catch {
-          fullContent = "Response received but could not be parsed.";
-        }
+        } catch { fullContent = "Response received but could not be parsed."; }
       }
 
       if (fullContent) {
@@ -400,11 +361,8 @@ export function ChatInterface() {
         }
       }
 
-      try {
-        await supabase.functions.invoke("increment-ai-usage", { body: { points: 1 } });
-      } catch (error) {
-        console.error("Error incrementing usage:", error);
-      }
+      try { await supabase.functions.invoke("increment-ai-usage", { body: { points: 1 } }); }
+      catch (error) { console.error("Error incrementing usage:", error); }
     } catch (error) {
       console.error("Error calling AI:", error);
       toast({ title: "Error", description: "Failed to connect to AI assistant. Please try again later.", variant: "destructive" });
@@ -425,25 +383,14 @@ export function ChatInterface() {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
-        .from("chat_messages")
-        .select("id, content, sender, created_at")
-        .eq("session_id", sessionId)
-        .order("created_at", { ascending: true });
+        .from("chat_messages").select("id, content, sender, created_at")
+        .eq("session_id", sessionId).order("created_at", { ascending: true });
       if (error) throw error;
-      if (!data || data.length === 0) {
-        setMessages([]);
-        setCurrentSessionId(sessionId);
-        return;
-      }
-      const loadedMessages: Message[] = data.map((msg) => ({
-        id: msg.id,
-        db_id: msg.id,
-        content: msg.content,
-        sender: msg.sender as "user" | "ai",
-        timestamp: new Date(msg.created_at),
-        sources: [],
-      }));
-      setMessages(loadedMessages);
+      if (!data || data.length === 0) { setMessages([]); setCurrentSessionId(sessionId); return; }
+      setMessages(data.map((msg) => ({
+        id: msg.id, db_id: msg.id, content: msg.content,
+        sender: msg.sender as "user" | "ai", timestamp: new Date(msg.created_at), sources: [],
+      })));
       setCurrentSessionId(sessionId);
       shouldAutoScrollRef.current = true;
       setShowJumpToLatest(false);
@@ -451,9 +398,7 @@ export function ChatInterface() {
     } catch (error) {
       console.error("Error loading session:", error);
       toast({ title: "Error", description: "Failed to load chat session", variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -471,56 +416,58 @@ export function ChatInterface() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-full chat-bg">
-      <div className="flex flex-col flex-1 h-full">
+      <div className="flex flex-col flex-1 h-full min-w-0">
 
         {/* ── Header ── */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-[rgba(255,255,255,0.06)]">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-[rgba(255,255,255,0.06)] flex-shrink-0">
           <div className="flex items-center gap-3">
-            <img src={JURIST_LOGO} alt="Jurist Mind" className="w-8 h-8 rounded-full object-cover" />
-            <h1 className="text-base font-semibold text-foreground tracking-tight">JURIST MIND</h1>
+            <img src={JURIST_LOGO} alt="Jurist Mind" className="w-7 h-7 rounded-full object-cover ring-1 ring-primary/20" />
+            <h1 className="text-sm font-semibold text-foreground tracking-tight">JURIST MIND</h1>
           </div>
           <Button
             onClick={handleNewChat}
             variant="ghost"
             size="sm"
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-[rgba(255,255,255,0.05)] rounded-lg"
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground hover:bg-[rgba(255,255,255,0.05)] rounded-lg text-xs h-8 px-3"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             New Chat
           </Button>
         </div>
 
-        {/* ── Messages ── */}
+        {/* ── Messages area ── */}
         <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto relative"
+          className="flex-1 overflow-y-auto"
         >
-          <div className="max-w-3xl mx-auto p-6">
+          {/* Centred column, same width as input box */}
+          <div className="max-w-2xl mx-auto px-4 py-10 w-full">
+
             {messages.length === 0 ? (
-              /* ── Empty state ── */
-              <div className="text-center pt-[15vh] pb-10 animate-fade-in">
-                <div className="flex justify-center mb-6">
+              /* ── Welcome / empty state ── */
+              <div className="text-center pt-[10vh] pb-10 animate-fade-in select-none">
+                <div className="flex justify-center mb-5">
                   <img
                     src={JURIST_LOGO}
                     alt="Jurist Mind"
-                    className="w-14 h-14 rounded-2xl object-cover shadow-gold"
+                    className="w-16 h-16 rounded-2xl object-cover shadow-gold"
                   />
                 </div>
-                <h2 className="text-[clamp(2rem,5vw,3rem)] font-bold text-foreground mb-3 tracking-[-0.03em] bg-gradient-to-b from-foreground to-muted-foreground bg-clip-text text-transparent">
+                <h2 className="text-4xl font-bold mb-2 tracking-[-0.03em] bg-gradient-to-b from-foreground to-muted-foreground bg-clip-text text-transparent">
                   JURIST MIND
                 </h2>
-                <p className="text-base text-muted-foreground mb-10 tracking-wide font-light">
-                  {user ? "What do you want to know?" : "Please sign in to start chatting"}
+                <p className="text-sm text-muted-foreground mb-10 font-light">
+                  {user ? "Your AI-powered legal research assistant" : "Please sign in to start chatting"}
                 </p>
 
                 {user && (
-                  <div className="flex flex-wrap justify-center gap-2 mb-8">
+                  <div className="flex flex-wrap justify-center gap-2">
                     {quickPrompts.map((prompt) => (
                       <button
                         key={prompt}
                         onClick={() => handleQuickPrompt(prompt)}
-                        className="px-4 py-2 rounded-full text-sm font-medium text-muted-foreground border border-[rgba(255,255,255,0.1)] hover:border-primary/50 hover:text-primary hover:bg-primary/5 transition-all btn-lift"
+                        className="px-4 py-2 rounded-full text-xs font-medium text-muted-foreground border border-[rgba(255,255,255,0.1)] hover:border-primary/40 hover:text-primary hover:bg-primary/5 transition-all"
                       >
                         {prompt}
                       </button>
@@ -531,144 +478,152 @@ export function ChatInterface() {
                 {!user && (
                   <Button
                     onClick={() => navigate("/auth")}
-                    className="mt-4 bg-gradient-primary text-gold-foreground hover:shadow-gold-lg btn-lift btn-press font-semibold"
+                    className="mt-6 bg-gradient-primary text-gold-foreground hover:shadow-gold-lg font-semibold"
                   >
                     Sign In to Continue
                   </Button>
                 )}
               </div>
             ) : (
-              /* ── Message list ── */
-              <div className="space-y-5">
+              /* ── Message thread ── */
+              <div className="space-y-8 pb-4">
                 {messages.map((message, index) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"} animate-fade-in-up`}
-                    style={{ animationDelay: `${Math.min(index * 30, 150)}ms` }}
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${Math.min(index * 20, 100)}ms` }}
                   >
-                    {/* AI avatar */}
-                    {message.sender === "ai" && (
-                      <div className="w-7 h-7 rounded-full overflow-hidden border border-primary/30 mr-3 mt-1 flex-shrink-0">
-                        <img src={JURIST_LOGO} alt="Jurist Mind" className="w-full h-full object-cover" />
+                    {message.sender === "user" ? (
+                      /* ── User bubble: right-aligned, no label ── */
+                      <div className="flex justify-end">
+                        <div
+                          className="max-w-[78%] px-4 py-3 rounded-2xl rounded-br-sm text-sm leading-relaxed"
+                          style={{
+                            background: "linear-gradient(135deg, hsl(240,15%,16%), hsl(240,12%,22%))",
+                            color: "hsl(240,10%,96%)",
+                          }}
+                        >
+                          <p className="whitespace-pre-wrap">{message.content}</p>
+                          <p className="text-[10px] mt-1.5 opacity-40 text-right">
+                            {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── AI response: full width, NO border, NO background ── */
+                      <div className="flex gap-3 items-start">
+                        {/* Logo avatar */}
+                        <div className="w-7 h-7 rounded-full overflow-hidden ring-1 ring-primary/20 flex-shrink-0 mt-0.5">
+                          <img src={JURIST_LOGO} alt="Jurist Mind" className="w-full h-full object-cover" />
+                        </div>
+
+                        {/* Content — raw text, no box */}
+                        <div className="flex-1 min-w-0">
+                          {message.content ? (
+                            <>
+                              <div className="text-sm leading-7 text-foreground">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    p: ({ node, ...props }) => <p className="mb-3 last:mb-0 leading-7" {...props} />,
+                                    strong: ({ node, ...props }) => <strong className="font-semibold text-foreground" {...props} />,
+                                    em: ({ node, ...props }) => <em className="italic text-muted-foreground" {...props} />,
+                                    ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-3 space-y-1.5" {...props} />,
+                                    ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-3 space-y-1.5" {...props} />,
+                                    li: ({ node, ...props }) => <li className="leading-6" {...props} />,
+                                    h1: ({ node, ...props }) => <h1 className="text-xl font-bold mt-6 mb-3 text-foreground" {...props} />,
+                                    h2: ({ node, ...props }) => <h2 className="text-base font-semibold mt-5 mb-2 text-foreground" {...props} />,
+                                    h3: ({ node, ...props }) => <h3 className="text-sm font-semibold mt-4 mb-1.5 text-foreground/90" {...props} />,
+                                    blockquote: ({ node, ...props }) => (
+                                      <blockquote className="border-l-2 border-primary/40 pl-4 my-3 text-muted-foreground italic" {...props} />
+                                    ),
+                                    code: ({ node, className, children, ...props }) => {
+                                      const isInline = !className;
+                                      return isInline ? (
+                                        <code className="bg-muted/60 px-1.5 py-0.5 rounded text-[0.82em] font-mono text-primary/90" {...props}>
+                                          {children}
+                                        </code>
+                                      ) : (
+                                        <code className={`font-mono text-xs ${className}`} {...props}>{children}</code>
+                                      );
+                                    },
+                                    pre: ({ node, ...props }) => (
+                                      <div className="overflow-x-auto my-3 bg-muted/40 border border-[rgba(255,255,255,0.06)] rounded-xl p-4">
+                                        <pre className="text-xs leading-5" {...props} />
+                                      </div>
+                                    ),
+                                    table: ({ node, ...props }) => (
+                                      <div className="overflow-x-auto my-4 rounded-xl border border-[rgba(255,255,255,0.08)]">
+                                        <table className="min-w-full text-sm" {...props} />
+                                      </div>
+                                    ),
+                                    thead: ({ node, ...props }) => <thead className="bg-muted/30 border-b border-[rgba(255,255,255,0.06)]" {...props} />,
+                                    tbody: ({ node, ...props }) => <tbody className="divide-y divide-[rgba(255,255,255,0.04)]" {...props} />,
+                                    tr: ({ node, ...props }) => <tr className="hover:bg-muted/20 transition-colors" {...props} />,
+                                    th: ({ node, ...props }) => (
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider" {...props} />
+                                    ),
+                                    td: ({ node, ...props }) => <td className="px-4 py-3 text-sm text-foreground/90" {...props} />,
+                                    hr: ({ node, ...props }) => <hr className="my-4 border-[rgba(255,255,255,0.08)]" {...props} />,
+                                  }}
+                                >
+                                  {message.content}
+                                </ReactMarkdown>
+                              </div>
+
+                              {/* Sources */}
+                              {message.sources && message.sources.length > 0 && (
+                                <SourceDisplay sources={message.sources} />
+                              )}
+
+                              {/* ── Action row ── */}
+                              <div className="flex items-center gap-0.5 mt-3 -ml-1">
+                                <button
+                                  onClick={() => handleCopy(message.content, message.id)}
+                                  title="Copy"
+                                  className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-[rgba(255,255,255,0.05)] transition-all"
+                                >
+                                  {copiedId === message.id
+                                    ? <Check className="w-3.5 h-3.5 text-primary" />
+                                    : <Copy className="w-3.5 h-3.5" />}
+                                </button>
+
+                                {index === messages.length - 1 && !isLoading && (
+                                  <button
+                                    onClick={handleRegenerate}
+                                    title="Regenerate"
+                                    className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-[rgba(255,255,255,0.05)] transition-all"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+
+                                <div className="flex-1" />
+
+                                <button
+                                  onClick={() => handleFeedback(message, true)}
+                                  title="Good response"
+                                  className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-green-500 hover:bg-green-500/10 transition-all"
+                                >
+                                  <ThumbsUp className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleFeedback(message, false)}
+                                  title="Bad response"
+                                  className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                                >
+                                  <ThumbsDown className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="py-1">
+                              <TypingIndicator />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
-
-                    <div className={`max-w-[70%] p-4 ${message.sender === "user" ? "msg-user" : "msg-ai"}`}>
-                      {/* Content */}
-                      {message.content ? (
-                        <div className={`text-sm leading-relaxed break-words ${message.sender === "user" ? "prose-invert" : ""}`}>
-                          {message.sender === "ai" ? (
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
-                                strong: ({ node, ...props }) => <span className="font-bold" {...props} />,
-                                ul: ({ node, ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
-                                ol: ({ node, ...props }) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
-                                li: ({ node, ...props }) => <li className="pl-1" {...props} />,
-                                h1: ({ node, ...props }) => <h1 className="text-lg font-bold mt-4 mb-2" {...props} />,
-                                h2: ({ node, ...props }) => <h2 className="text-base font-bold mt-3 mb-2" {...props} />,
-                                h3: ({ node, ...props }) => <h3 className="text-sm font-bold mt-2 mb-1" {...props} />,
-                                code: ({ node, className, ...props }) => (
-                                  <code className={`bg-muted/50 px-1 py-0.5 rounded font-mono text-xs ${className}`} {...props} />
-                                ),
-                                pre: ({ node, ...props }) => (
-                                  <div className="overflow-x-auto w-full my-2 bg-muted/50 p-2 rounded-lg">
-                                    <pre className="text-xs" {...props} />
-                                  </div>
-                                ),
-                                table: ({ node, ...props }) => (
-                                  <div className="overflow-x-auto my-4 border rounded-lg">
-                                    <table className="min-w-full divide-y divide-border bg-card text-card-foreground" {...props} />
-                                  </div>
-                                ),
-                                thead: ({ node, ...props }) => <thead className="bg-muted/50" {...props} />,
-                                tbody: ({ node, ...props }) => <tbody className="divide-y divide-border bg-background" {...props} />,
-                                tr: ({ node, ...props }) => <tr className="hover:bg-muted/50 transition-colors" {...props} />,
-                                th: ({ node, ...props }) => (
-                                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider" {...props} />
-                                ),
-                                td: ({ node, ...props }) => <td className="px-4 py-3 text-sm whitespace-nowrap" {...props} />,
-                              }}
-                            >
-                              {message.content}
-                            </ReactMarkdown>
-                          ) : (
-                            <p className="whitespace-pre-wrap">{message.content}</p>
-                          )}
-                        </div>
-                      ) : (
-                        /* Loading indicator with timed phases */
-                        <TypingIndicator />
-                      )}
-
-                      {/* Timestamp */}
-                      <p className="text-[10px] text-muted-foreground mt-2">
-                        {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </p>
-
-                      {/* Sources */}
-                      {message.sender === "ai" && message.sources && message.sources.length > 0 && (
-                        <SourceDisplay sources={message.sources} />
-                      )}
-
-                      {/* ── AI action bar: Copy · Regenerate · Like · Dislike ── */}
-                      {message.sender === "ai" && message.content && (
-                        <div className="flex items-center gap-1 mt-3 pt-3 border-t border-[rgba(255,255,255,0.06)]">
-                          {/* Copy */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                            onClick={() => handleCopy(message.content, message.id)}
-                            title="Copy to clipboard"
-                          >
-                            {copiedId === message.id ? (
-                              <Check className="w-3.5 h-3.5 text-primary" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </Button>
-
-                          {/* Regenerate — only on last AI message */}
-                          {index === messages.length - 1 && !isLoading && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                              onClick={handleRegenerate}
-                              title="Regenerate response"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-
-                          <div className="flex-1" />
-
-                          {/* Thumbs up */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-green-500"
-                            onClick={() => handleFeedback(message, true)}
-                            title="Good response"
-                          >
-                            <ThumbsUp className="w-3.5 h-3.5" />
-                          </Button>
-
-                          {/* Thumbs down */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-red-500"
-                            onClick={() => handleFeedback(message, false)}
-                            title="Bad response"
-                          >
-                            <ThumbsDown className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 ))}
                 <div ref={messagesEndRef} />
@@ -676,27 +631,29 @@ export function ChatInterface() {
             )}
           </div>
 
-          {/* Jump to latest button */}
+          {/* Jump to latest */}
           {showJumpToLatest && (
-            <Button
-              onClick={handleJumpToLatest}
-              className="fixed bottom-32 left-1/2 transform -translate-x-1/2 z-10 flex items-center gap-2 bg-secondary/90 backdrop-blur-lg text-foreground border border-[rgba(255,255,255,0.1)] hover:border-primary/40 hover:shadow-gold rounded-full px-4 btn-lift"
-              size="sm"
-            >
-              <ArrowDown className="w-3.5 h-3.5" />
-              Jump to latest
-            </Button>
+            <div className="sticky bottom-4 flex justify-center pointer-events-none">
+              <Button
+                onClick={handleJumpToLatest}
+                size="sm"
+                className="pointer-events-auto flex items-center gap-2 bg-secondary/90 backdrop-blur-lg text-foreground border border-[rgba(255,255,255,0.1)] hover:border-primary/40 rounded-full px-4 shadow-lg"
+              >
+                <ArrowDown className="w-3.5 h-3.5" />
+                Jump to latest
+              </Button>
+            </div>
           )}
         </div>
 
-        {/* ── Input Area ── */}
-        <div className="flex-shrink-0 px-6 pb-4 pt-2">
-          <div className="max-w-3xl mx-auto">
+        {/* ── Input area ── */}
+        <div className="flex-shrink-0 px-4 pb-5 pt-2">
+          <div className="max-w-2xl mx-auto">
             <div className="chat-input-glass rounded-2xl px-4 py-3 flex gap-3 items-end">
               <Button
                 size="sm"
                 variant="ghost"
-                className="p-2 h-9 w-9 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 flex-shrink-0 mb-0.5"
+                className="p-2 h-8 w-8 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 flex-shrink-0 mb-0.5"
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
@@ -704,12 +661,12 @@ export function ChatInterface() {
               <TextareaAutosize
                 ref={inputRef}
                 minRows={1}
-                maxRows={5}
+                maxRows={6}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="What do you want to know?"
-                className="flex-1 bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-sm text-foreground placeholder:text-muted-foreground/60 placeholder:italic py-2"
+                placeholder="Ask anything legal…"
+                className="flex-1 bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-sm text-foreground placeholder:text-muted-foreground/50 py-1.5 leading-6"
               />
 
               <div className="flex gap-1.5 flex-shrink-0 mb-0.5">
@@ -723,24 +680,22 @@ export function ChatInterface() {
                 <button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim() || isLoading || !user}
-                  className="h-8 w-8 rounded-full bg-gradient-primary flex items-center justify-center shadow-gold hover:shadow-gold-lg btn-lift btn-press disabled:opacity-30 disabled:bg-muted disabled:shadow-none disabled:bg-none transition-all"
+                  className="h-8 w-8 rounded-full bg-gradient-primary flex items-center justify-center shadow-gold hover:shadow-gold-lg btn-lift btn-press disabled:opacity-25 disabled:shadow-none transition-all"
                 >
                   <Send className="w-3.5 h-3.5 text-gold-foreground" />
                 </button>
               </div>
             </div>
 
-            <div className="text-center mt-3">
-              <p className="text-[10px] text-muted-foreground/60">
-                By using Jurist Mind, you consent to the{" "}
-                <NavLink to="/terms" className="text-primary/70 hover:text-primary hover:underline transition-colors">
-                  terms and conditions
-                </NavLink>
-              </p>
-            </div>
+            <p className="text-center mt-2.5 text-[10px] text-muted-foreground/40">
+              By using Jurist Mind, you agree to the{" "}
+              <NavLink to="/terms" className="text-primary/60 hover:text-primary hover:underline transition-colors">
+                terms and conditions
+              </NavLink>
+            </p>
           </div>
         </div>
       </div>
     </div>
   );
-}
+} 
